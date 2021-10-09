@@ -13,8 +13,10 @@ find_package(OpenCV REQUIRED)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
+file(GLOB_RECURSE src src/*.cpp)
+
 # Declare the executable target built from your sources
-add_executable(armor src/main.cpp src/armordetection.cpp)
+add_executable(armor ${src})
 
 # Link your application with OpenCV libraries
 target_link_libraries(armor PRIVATE ${OpenCV_LIBS})

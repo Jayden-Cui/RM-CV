@@ -10,61 +10,83 @@ using namespace std;
 ArmorDetection* armor = new ArmorDetection();
 Point2f center;
 
+#define MAXPICNUM 1095
+
+void parse(int argc, char **argv)
+{
+	for (int i=1; i<argc; i++) {
+		if ( string(argv[i]) == "control:main" )
+			armor->controlBar(armor->mainHsv);
+		else if ( string(argv[i]) == "control:blue" )
+			armor->controlBar(armor->blueHsv);
+	}
+}
+
 int main(int argc, char **argv)
 {
-	//fps变量
-	double t = (double)getTickCount();
-	double fps;
-	char string[10];
-	char string2[10];
+	parse(argc, argv);
+
 	Mat frame;
+	bool auto_play = false;
 
-
-	// VideoCapture capture(argv[1]);
-	// if (!capture.isOpened())
-	// {
-	// 	printf("无法打开相机...\n");
-	// 	return -1;
-	// }
-
-	namedWindow("frame", CV_WINDOW_AUTOSIZE);
-	namedWindow("mask", CV_WINDOW_AUTOSIZE);
-	namedWindow("Control", CV_WINDOW_AUTOSIZE);
-
+	int gap = 100;
+	int last_id = -1;
 	// while (capture.read(frame))//读取当前帧
-	for (int id=0; id<1000;)
+	for (int id=0; ; )
 	{
-		cout << "\r[" << id << "/" << 1000 << "]";
-		std::string img_path = "../../../imageDataset/" + to_string(id) + ".jpg";
-		frame = imread(img_path);
-		armor->setInputImage(frame);
-		armor->Pretreatment();
-		// center = armor->GetArmorCenter();
-		// cout << "[INFO] x = " << center.x - frame.cols / 2 << "    y = " << center.y - frame.rows / 2 << endl;
+		// cout << "\r[" << id << "/" << 1000 << "]";
+		if ( last_id != id ) {
 
-		//计算fps
-		// double dt = ((double)getTickCount() - t) / (double)getTickFrequency();
-		// fps = 1.0 / dt;
-		// t = (double)getTickCount();
-		// sprintf(string, "%.2f", fps);
-		// std::string fpsString("FPS:");
-		// fpsString += string;
-		// putText(frame, fpsString, Point(5, 20), FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 255, 255));
+			std::string img_path = "../../../imageDataset/" + to_string(id) + ".jpg";
+			frame = imread(img_path);
+			if ( frame.empty() ) {
+				id += (id > last_id ? 1 : -1);
+				continue;
+			}
+			imshow("orginframe", frame);
+			putText(frame, to_string(id), Point(0, 30), HersheyFonts::FONT_HERSHEY_COMPLEX, 1, Scalar(0xff,0xff,0xff), 2);
+			armor->setInputImage(frame);
+			armor->Pretreatment();
+			armor->getArmor();
+			armor->showFrame();
 
-		char c = waitKey(100);
-		if (c == 27) //"Esc"
-		{
-			break;
 		}
+		last_id = id;
+		char c = waitKey(gap);
+		if (c == 27 || c == 'q' ) //"Esc"
+			break;
 		else if ( c == 'a' ) {
 			id -= (id>0);
 		}
 		else if ( c == 'd' ) {
-			id ++;
+			id += (id<MAXPICNUM);
+		}
+		else if ( c == 'z' ) {
+			id -= (id>9) * 10;
+		}
+		else if ( c == 'c' ) {
+			id += (id<MAXPICNUM-10) * 10;
+		}
+		else if ( c == 's' ) {
+			armor->saveData();
+		}
+		else if ( c == 'j' ) {
+			auto_play = true;
+		}
+		else if ( c == 'k' ) {
+			auto_play = false;
+		}
+		else if ( c == 'u' ) {
+			gap /= 2;
+		}
+		else if ( c == 'i' ) {
+			gap *= 2;
+		}
+		else if ( auto_play ) {
+			id += (id<MAXPICNUM);
 		}
 	}
 	delete armor;
-	// capture.release();//释放视频内存
 	waitKey(1);
 	return 0;
 }

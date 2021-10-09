@@ -5,44 +5,72 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
+#define hsvPath  "../model/hsv.dat"
+#define MAIN_HSV_PATH	"../model/mainhsv.dat"
+#define BLUE_HSV_PATH	"../model/bluehsv.dat"
+#define RED_HSV_PAHT	"../model/redhsv.dat"
+
 using namespace std;
 using namespace cv;
 
 class ArmorDetection {
 private:
-	Mat frame, hsv, mask;
-	Mat kernel1 = getStructuringElement(MORPH_RECT, Size(3, 3), Point(-1, -1));
-	Mat kernel2 = getStructuringElement(MORPH_RECT, Size(5, 5), Point(-1, -1));
-	Point2f currentCenter;
-	Point2f lastCenter;
+	Mat frame;
+	Mat kernel1 = getStructuringElement(MORPH_ELLIPSE, Size(3, 3), Point(-1, -1));
+	Mat kernel2 = getStructuringElement(MORPH_ELLIPSE, Size(3, 3), Point(-1, -1));
+	Mat kernel3 = getStructuringElement(MORPH_CROSS, Size(7, 7));
 	vector<RotatedRect> minRects;
-	int lost;
-	// static const string hsvPath;
-
+	int width, height;
+	Point2f center;
+	
+	bool lostRect;
 public:
+
+	struct Hsv
+	{
+		int iLowH;
+		int iHighH;
+
+		int iLowS;
+		int iHighS;
+
+		int iLowV;
+		int iHighV;
+	};
+	Hsv mainHsv;
+	Hsv blueHsv;
+	Hsv redHsv;
+	
 	ArmorDetection();
 	explicit ArmorDetection(Mat& input);
+
 	void setInputImage(Mat input);
 	void Pretreatment();
-	Point2f GetArmorCenter();
+	void getArmor();
+
+	void controlBar(Hsv &range);
+	void hsvRange(Mat &input, Mat &output, Hsv &range);
+
+	void showFrame();
 	~ArmorDetection();
 	
-	int iLowH = 49;
-	int iHighH = 93;
+	void saveData();
+	void LoadData();
 
-	int iLowS = 5;
-	int iHighS = 95;
-
-	int iLowV = 255;
-	int iHighV = 255;
+	struct
+	{
+		int minArea = 100;
+		int fillity = 60;
+		int ratio = 170;
+	} param;
+	
 
 private:
-	void LostTarget();
+	void loadHsv(Hsv &range, string path);
+	void saveHsv(Hsv &range, string path);
 	double Distance(Point2f, Point2f);
 	double max(double, double);
 	double min(double, double);
-	void saveData();
-	void LoadData();
 };
 
 

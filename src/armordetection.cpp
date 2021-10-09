@@ -1,245 +1,205 @@
 #include "armordetection.h"
-#include <fstream>
-
-#define hsvPath  "hsv.dat"
+#include "lightboard.hpp"
 
 ArmorDetection::ArmorDetection() {
 	LoadData();
+	center = Point2f(-1, -1);
 };
 
 ArmorDetection::ArmorDetection(Mat & input) {
-	frame = input;
 	LoadData();
+	frame = input;
 }
 
 void ArmorDetection::setInputImage(Mat input) {
 	frame = input;
-	currentCenter.x = 0;
-	currentCenter.y = 0;
+	width = frame.size().width;
+	height = frame.size().height;
+
+	lostRect = false;
+	minRects.clear();
+
+	LightBoard::set_clear(false);
+	LightBoard::result = LightBoard::EMPTY;
+}
+
+void ArmorDetection::controlBar(Hsv &range) {
+	//创建进度条
+	namedWindow("Control", CV_WINDOW_AUTOSIZE);
+
+	cvCreateTrackbar("LowH", "Control", &range.iLowH, 179);
+	cvCreateTrackbar("HighH", "Control", &range.iHighH, 179);
+
+	cvCreateTrackbar("LowS", "Control", &range.iLowS, 255);
+	cvCreateTrackbar("HighS", "Control", &range.iHighS, 255);
+
+	cvCreateTrackbar("LowV", "Control", &range.iLowV, 255);
+	cvCreateTrackbar("HighV", "Control", &range.iHighV, 255);
+
+}
+
+void ArmorDetection::hsvRange(Mat &input, Mat &output, Hsv &range) {
+	inRange(input, 
+		Scalar(range.iLowH, range.iLowS, range.iLowV),
+		Scalar(range.iHighH, range.iHighS, range.iHighV),
+		output);
 }
 
 //图像预处理
 void ArmorDetection::Pretreatment() {
-	Mat canny;
-	Point p, center;
+	clock_t start = clock();
+
+	// namedWindow("control");
+	// createTrackbar("minarea", "control", &param.minArea, 500);
+	// createTrackbar("fillity", "control", &param.fillity, 100);
+	// createTrackbar("ratio", "control", &param.ratio, 300);
+
+	// get hsv image
+	Mat hsv;
+	blur(frame, frame, Size(5, 5));
+	cvtColor(frame, hsv, CV_BGR2HSV);
+
+	// main inrange
+	Mat mask;
+	hsvRange(hsv, mask, mainHsv);
+	morphologyEx(mask, mask, MORPH_OPEN, kernel1);
+	morphologyEx(mask, mask, MORPH_CLOSE, kernel1);
+	dilate(mask, mask, kernel2);    //膨胀
+
+	// blue inrange
+	Mat blueMask;
+	hsvRange(hsv, blueMask, blueHsv);
+	morphologyEx(blueMask, blueMask, MORPH_OPEN, kernel1);
+	morphologyEx(blueMask, blueMask, MORPH_CLOSE, kernel3);
+	dilate(blueMask, blueMask, kernel1);
+
+	mask = mask | blueMask;
+	// imshow("mask", mask);
+
+	// open morpholog again
+	morphologyEx(mask, mask, MORPH_OPEN, kernel1);
+
 	vector<vector<Point>> contours;
 	vector<Vec4i> hireachy;
-	vector<Rect> boundRect(contours.size());
-	Point2f vertex[4];
+	findContours(mask, contours, hireachy, CV_RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
-	//创建进度条
-	cvCreateTrackbar("LowH", "Control", &iLowH, 255);
-	cvCreateTrackbar("HighH", "Control", &iHighH, 255);
-
-	cvCreateTrackbar("LowS", "Control", &iLowS, 255);
-	cvCreateTrackbar("HighS", "Control", &iHighS, 255);
-
-	cvCreateTrackbar("LowV", "Control", &iLowV, 255);
-	cvCreateTrackbar("HighV", "Control", &iHighV, 255);
-
-	cvtColor(frame, hsv, CV_BGR2HSV);
-	inRange(hsv,
-		Scalar(iLowH, iLowS, iLowV),
-		Scalar(iHighH, iHighS, iHighV),
-		mask);
-	// 形态学操作
-	Canny(mask, canny, 100, 200);
-	// morphologyEx(mask, mask, MORPH_OPEN, kernel1, Point(-1, -1));//开操作
-	// dilate(mask, mask, kernel2, Point(-1, -1), 1);//膨胀
-
-	//轮廓增强
-	// Canny(mask, mask, 3, 9, 3);
-	findContours(canny, contours, hireachy, CV_RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 	//筛选，去除一部分矩形
+	int area_padoff = contours.size() < 20 ? 35 : 0;
+	// double area_padoff = contours.size(
 	for (int i = 0; i < contours.size(); ++i) {
-		RotatedRect minRect = minAreaRect(Mat(contours[i]));
-		// minRect.points(vertex);
-		if (minRect.size.width < minRect.size.height) {
-			// cout << minRect.size.width << endl;
-			// minRect.angle += 90;
-			// float t = minRect.size.width;
-			// minRect.size.width = minRect.size.height;
-			// minRect.size.height = t;
-			// rectangle(frame, contours[i], Scalar(255, 255, 0), 3);
-			drawContours(frame, contours, i, Scalar(255,0,255), FILLED);
-		}
-		// rectangle(frame, contours[i], Scalar(255,255,0), 3);
-	// 	if ((minRect.size.width * 10 > minRect.size.height)
-	// 		&& (minRect.size.width * 1 < minRect.size.height)
-	// 		&& (abs(minRect.angle) < 30)) {
-	// 		minRects.push_back(minRect);
-	// 	}
-	// 	for (int l = 0; l < 4; l++)
-	// 	{
-	// 		line(frame, vertex[l], vertex[(l + 1) % 4], Scalar(255, 0, 0), 2);
-	// 	}
-	// 	line(frame, Point(frame.cols / 2 - 15, frame.rows / 2),
-	// 		Point(frame.cols / 2 + 15, frame.rows / 2), Scalar(0, 255, 255), 5);
-	// 	line(frame, Point(frame.cols / 2, frame.rows / 2 - 15),
-	// 		Point(frame.cols / 2, frame.rows / 2 + 15), Scalar(0, 255, 255), 5);
-	// 	circle(frame, Point(frame.cols / 2, frame.rows / 2), 4, Scalar(0, 0, 255), -1);
+		/*******  primary filter  ************/
+		// points enough
+		if ( contours[i].size() < 6 )	continue;
+
+		// no children contours
+		if ( hireachy[i][2] != -1 )	continue;
+		
+		// light area must be large enough
+		double cont_area = contourArea(contours[i]);
+		if ( cont_area < param.minArea - area_padoff )	continue;
+		
+		// fit ellipse
+		RotatedRect minRect = fitEllipse(contours[i]);
+
+		// ellipse(frame, minRect, Scalar(188,155,55), 1);
+
+		if ( minRect.angle > 30 && minRect.angle < 150 )	continue;
+		// ellipse(frame, minRect, Scalar(88,55,255), 1);
+
+		// if ( cont_area / minRect.size.area() < 0.6 )	continue;
+
+		double ratio = max(minRect.size.width, minRect.size.height) \
+			/ min(minRect.size.width, minRect.size.height);
+			
+
+		// long short rate
+		if ( ratio < double(param.ratio)/100. )
+			continue;
+
+		char str_ratio[8];
+		sprintf(str_ratio, "%.2f", cont_area / minRect.size.area());
+		// putText(frame, string(str_ratio), minRect.center, FONT_HERSHEY_COMPLEX, 0.6, Scalar(5,55,255), 2);
+
+		// ellipse(frame, minRect, Scalar(255,0,255), 3);
+
+		minRects.push_back(minRect);
 	}
-	imshow("orgin", frame);
-	imshow("maskask", mask);
-	imshow("cont", canny);
+
+	putText(frame, to_string(minRects.size()), Point(0,frame.size().height-10), HersheyFonts::FONT_HERSHEY_COMPLEX_SMALL, 1, Scalar(255,255,0));
+
+	if ( ! minRects.empty() ) {
+		sort(minRects.begin(), minRects.end(), \
+			[](const RotatedRect&a, const RotatedRect&b) {
+				return a.center.y < b.center.y;
+		});
+	}
+
 }
 
-
-Point2f ArmorDetection::GetArmorCenter() {
-	//遍历所有矩形，两两组合
-	RotatedRect leftRect, rightRect;
-	vector<int*> reliability;
-	double area[2], distance, height;
-
-	if (minRects.size() < 2) {
-		LostTarget();
-		return currentCenter;
-	}
-
-	for (int i = 0; i < minRects.size(); ++i) {
-		for (int j = i + 1; j < minRects.size(); ++j) {
-			int level = 0;
-			int temp[3];
-			leftRect = minRects[i];
-			rightRect = minRects[j];
-
-			//判断
-			if (leftRect.angle == rightRect.angle) {
-				level += 10;
-			}
-			else if (abs(leftRect.angle - rightRect.angle) < 5) {
-				level += 8;
-			}
-			else if (abs(leftRect.angle - rightRect.angle) < 10) {
-				level += 6;
-			}
-			else if (abs(leftRect.angle - rightRect.angle) < 30) {
-				level += 4;
-			}
-			else if (abs(leftRect.angle - rightRect.angle) < 90) {
-				level += 1;
-			}
-			else {
-				break;
-			}
-
-			area[0] = leftRect.size.width * leftRect.size.height;
-			area[1] = rightRect.size.width * rightRect.size.height;
-			if (area[0] == area[1]) {
-				level += 10;
-			}
-			else if (min(area[0], area[1]) * 1.5 > max(area[0], area[1])) {
-				level += 8;
-			}
-			else if (min(area[0], area[1]) * 2 > max(area[0], area[1])) {
-				level += 6;
-			}
-			else if (min(area[0], area[1]) * 3 > max(area[0], area[1])) {
-				level += 4;
-			}
-			else if (min(area[0], area[1]) * 4 > max(area[0], area[1])) {
-				level += 1;
-			}
-			else {
-				break;
-			}
-
-			double half_height = (leftRect.size.height + rightRect.size.height) / 4;
-			if (leftRect.center.y == rightRect.center.y) {
-				level += 10;
-			}
-			else if (abs(leftRect.center.y - rightRect.center.y) < 0.2 * half_height) {
-				level += 8;
-			}
-			else if (abs(leftRect.center.y - rightRect.center.y) < 0.4 * half_height) {
-				level += 6;
-			}
-			else if (abs(leftRect.center.y - rightRect.center.y) < 0.8 * half_height) {
-				level += 4;
-			}
-			else if (abs(leftRect.center.y - rightRect.center.y) < half_height) {
-				level += 1;
-			}
-			else {
-				break;
-			}
-
-			distance = Distance(leftRect.center, rightRect.center);
-			height = (leftRect.size.height + rightRect.size.height) / 2;
-			if (distance != 0 && distance > height) {
-				if (distance < 1.5 * height) {
-					level += 6;
-				}
-				else if (distance < 1.8 * height) {
-					level += 4;
-				}
-				else if (distance < 2.4 * height) {
-					level += 2;
-				}
-				else if (distance < 10 * height) {
-					level += 1;
-				}
-				else {
-					break;
-				}
-			}
-
-			temp[0] = i;
-			temp[1] = j;
-			temp[2] = level;
-
-			reliability.push_back(temp);
-
+void ArmorDetection::getArmor() {
+	if ( minRects.empty() )	return;
+	vector<vector<RotatedRect>> rect_groups;
+	vector<RotatedRect> rect_group{minRects[0]};
+	for (int i=1; i<=minRects.size(); i++) {
+		if ( i == minRects.size() ) {
+			if ( rect_group.size() > 1 )
+				rect_groups.push_back(rect_group);
+			break;
 		}
-	}
-
-	if (reliability.empty()) {
-		LostTarget();
-		return currentCenter;
-	}
-	else {
-
-		int maxLevel = 0, index = 0;
-		for (int k = 0; k < reliability.size(); ++k) {
-			if (reliability[k][2] > maxLevel) {
-				maxLevel = reliability[k][2];
-				index = k;
+		else if ( minRects[i].center.y - minRects[i-1].center.y > height / 15 ) {
+			if ( rect_group.size() > 1 ) {
+				sort(rect_group.begin(), rect_group.end(), \
+					[](const RotatedRect &a, const RotatedRect &b) {
+						return a.center.x < b.center.x;
+					});
+				rect_groups.push_back(rect_group);
 			}
-		}
-
-		currentCenter.x = (minRects[reliability[index][0]].center.x + minRects[reliability[index][1]].center.x) / 2;
-		currentCenter.y = (minRects[reliability[index][0]].center.y + minRects[reliability[index][1]].center.y) / 2;
-
-		//与上一次的结果对比
-		if (lastCenter.x == 0 && lastCenter.y == 0) {
-			lastCenter = currentCenter;
-			lost = 0;
+			rect_group.clear();
+			rect_group.push_back(minRects[i]);
 		}
 		else {
-			double difference = Distance(currentCenter, lastCenter);
-			if (difference > 300) {
-				LostTarget();
-				return currentCenter;
+			rect_group.push_back(minRects[i]);
+		}
+	}
+	if ( rect_groups.empty() )	return;
+	LightBoard *fitness = nullptr;
+
+	for (int i=0; i<rect_groups.size(); i++) {
+		for (int j=0; j<rect_groups[i].size()-1; j++) {
+			// ellipse(frame, rect_groups[i][j], Scalar(255,0,255), 3);
+
+			for (int k=j+1; k<rect_groups[i].size(); k++) {
+				float this_score = LightBoard(rect_groups[i][j], rect_groups[i][k], center).score();
+				if ( fitness == nullptr ) {
+					if ( this_score > 0 )
+						fitness = new LightBoard(rect_groups[i][j], rect_groups[i][k], center);
+				}
+				else if ( fitness->score() < LightBoard(rect_groups[i][j], rect_groups[i][k], center).score() ) {
+					delete fitness;
+					fitness = new LightBoard(rect_groups[i][j], rect_groups[i][k], center);
+				}
 			}
 		}
-		line(frame, Point(currentCenter.x - 10, currentCenter.y - 10),
-			Point(currentCenter.x + 10, currentCenter.y + 10), Scalar(255, 255, 0), 5);
-		line(frame, Point(currentCenter.x + 10, currentCenter.y - 10),
-			Point(currentCenter.x - 10, currentCenter.y + 10), Scalar(255, 255, 0), 5);
-		circle(frame, currentCenter, 7.5, Scalar(0, 0, 255), 5);
-		// imshow("frame", frame);
-		return currentCenter;
+	}
+	if ( fitness != nullptr ) {
+		fitness->drawArmor(frame);
+		center = fitness->center();
+	}
+
+	if ( LightBoard::if_clear() ) {
+		center = Point2f(-1, -1);
 	}
 }
 
-void ArmorDetection::LostTarget() {
-	lost++;
-	if (lost < 3) {
-		currentCenter = lastCenter;
-	}
-	else {
-		currentCenter = Point2f(0, 0);
-		lastCenter = Point2f(0, 0);
+void ArmorDetection::showFrame() {
+	imshow("frame", frame);
+
+	if ( LightBoard::EMPTY == LightBoard::result \
+		|| LightBoard::LOST_TARGET == LightBoard::result ) {
+		cout << "lost target" << endl;
+	}	
+	else if ( LightBoard::NEW_TARGET == LightBoard::result ) {
+		cout << "perhaps new target" << endl;
 	}
 }
 
@@ -260,47 +220,46 @@ ArmorDetection::~ArmorDetection() {
 	saveData();
 }
 
+void ArmorDetection::saveHsv(Hsv &range, string path) {
+	ofstream out_file(path);
+	out_file << range.iLowH << " " << range.iHighH << " " \
+		<< range.iLowS << " " << range.iHighS << " " \
+		<< range.iLowV << " " << range.iHighV;
+	out_file.close();
+
+	cout << "loaded [" << path << "]" << endl; 
+}
+
+void ArmorDetection::loadHsv(Hsv &range, string path) {
+	ifstream in_file(path);
+	if ( in_file.is_open() == false ) {
+		cout << "Open " << path << " FAIL =============" << endl;
+		return;
+	}
+	in_file >> range.iLowH >> range.iHighH \
+		>> range.iLowS >> range.iHighS \
+		>> range.iLowV >> range.iHighV;
+	in_file.close();
+
+	cout << "saved [" << path << "]" << endl; 
+}
+
 void ArmorDetection::saveData() {
 	cout << "Saving" << endl;
-	ofstream outFile;
-	// cout << hsvPath << endl;
-	
-	outFile.open(hsvPath);	
-	// outFile.write((char*)(&iLowH), 4);
-	// outFile.write((char*)(&iHighH), 4);
-	// outFile.write((char*)(&iLowS), 4);
-	// outFile.write((char*)(&iHighS), 4);
-	// outFile.write((char*)(&iLowV), 4);
-	// outFile.write((char*)(&iHighV), 4);
-	// cout << iLowH << endl;
-	outFile << iLowH << " " << iHighH << " " << iLowS << " " << iHighS << " " << iLowV << " " << iHighV ;
-	// cout << iLowH << iHighH << endl;
-	outFile.close();
+
+	saveHsv(mainHsv, MAIN_HSV_PATH);
+	saveHsv(blueHsv, BLUE_HSV_PATH);
+	saveHsv(redHsv, RED_HSV_PAHT);
+
 	cout << "Saved" << endl;
 }
 
 void ArmorDetection::LoadData() {
 	cout << "Loading ..." << endl;
-	ifstream inFile;
-	// cout << hsvPath << endl;
-	inFile.open(hsvPath, ios::in);
-	// if ( inFile ) {
-	// 	cout << "File not exist. Creating new file" << endl;
-	// 	saveData(); 
-	// }
-	// inFile.read((char*)(&iLowH), 4);
-	// inFile.read((char*)(&iHighH), 4);
-	// inFile.read((char*)(&iLowS), 4);
-	// inFile.read((char*)(&iHighS), 4);
-	// inFile.read((char*)(&iLowV), 4);
-	// inFile.read((char*)(&iHighV), 4);
-	if ( !inFile.is_open()) {
-		cout << "Open Fail" << endl;
-		return ;
-	}
-	inFile >> iLowH >> iHighH >> iLowS >> iHighS >> iLowV;
-	// cout << iLowH << endl;
-	inFile.close();
+
+	loadHsv(mainHsv, MAIN_HSV_PATH);
+	loadHsv(blueHsv, BLUE_HSV_PATH);
+	loadHsv(redHsv, RED_HSV_PAHT);
 
 	cout << "Loaded" << endl;
 }
