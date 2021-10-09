@@ -37,7 +37,7 @@ int main(int argc, char **argv)
 		// cout << "\r[" << id << "/" << 1000 << "]";
 		if ( last_id != id ) {
 
-			std::string img_path = "../../../imageDataset/" + to_string(id) + ".jpg";
+			std::string img_path = "../sources/imageDataset/" + to_string(id) + ".jpg";
 			frame = imread(img_path);
 			if ( frame.empty() ) {
 				id += (id > last_id ? 1 : -1);
