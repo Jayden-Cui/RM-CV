@@ -2,12 +2,23 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 #include <iostream>
+
 #include "armordetection.h"
+#include "energydetector.hpp"
+
+enum DETECTION_MODE{
+	ARMOR,
+	ENERGY
+};
+
+#define MODE ENERGY
+
 
 using namespace cv;
 using namespace std;
 
 ArmorDetection* armor = new ArmorDetection();
+EnergyDetector* energy = new EnergyDetector();
 Point2f center;
 
 #define MAXPICNUM 1095
@@ -16,9 +27,11 @@ void parse(int argc, char **argv)
 {
 	for (int i=1; i<argc; i++) {
 		if ( string(argv[i]) == "control:main" )
-			armor->controlBar(armor->mainHsv);
+			controlBar(armor->mainHsv);
 		else if ( string(argv[i]) == "control:blue" )
-			armor->controlBar(armor->blueHsv);
+			controlBar(armor->blueHsv);
+		else if ( string(argv[i]) == "control:energy" )
+			controlBar(energy->energyHsv);
 	}
 }
 
@@ -27,29 +40,51 @@ int main(int argc, char **argv)
 	parse(argc, argv);
 
 	Mat frame;
+	vector<Mat*> frames;
+	Mat *PtrMat;
+	VideoCapture cap("../sources/video/video.mp4");
+	while ( cap.read(frame) ) {
+		PtrMat = new Mat;
+		frame.copyTo(*PtrMat);
+		frames.push_back(PtrMat);
+	}
+
 	bool auto_play = false;
-
 	int gap = 100;
+	int id;
 	int last_id = -1;
-	// while (capture.read(frame))//读取当前帧
-	for (int id=0; ; )
-	{
-		// cout << "\r[" << id << "/" << 1000 << "]";
-		if ( last_id != id ) {
 
-			std::string img_path = "../sources/imageDataset/" + to_string(id) + ".jpg";
-			frame = imread(img_path);
-			if ( frame.empty() ) {
-				id += (id > last_id ? 1 : -1);
-				continue;
-			}
+
+	for (id=0; ; )
+	{
+		cout << "\r[" << id << "/" << frames.size() << "]" << " ";
+		if ( last_id != id ) 
+		{
+			frames[id]->copyTo(frame);
+			// frame = frames[id];
+			// std::string img_path = "../sources/imageDataset/" + to_string(id) + ".jpg";
+			// frame = imread(img_path);
+			// if ( frame.empty() ) {
+			// 	id += (id > last_id ? 1 : -1);
+			// 	continue;
+			// }
 			imshow("orginframe", frame);
 			putText(frame, to_string(id), Point(0, 30), HersheyFonts::FONT_HERSHEY_COMPLEX, 1, Scalar(0xff,0xff,0xff), 2);
-			armor->setInputImage(frame);
-			armor->Pretreatment();
-			armor->getArmor();
-			armor->showFrame();
+			
+			if ( MODE == ARMOR ) {
+				armor->setInputImage(frame);
+				armor->Pretreatment();
+				armor->getArmor();
+				armor->showFrame();
+			}
+			else if ( MODE == ENERGY ) {
+				energy->setInputImage(frame);
+				energy->preTreatment();
+				energy->calculate();
+				energy->showFrame();
+			}
 
+			cout << endl;
 		}
 		last_id = id;
 		char c = waitKey(gap);
@@ -59,16 +94,17 @@ int main(int argc, char **argv)
 			id -= (id>0);
 		}
 		else if ( c == 'd' ) {
-			id += (id<MAXPICNUM);
+			id += (id<frames.size());
 		}
 		else if ( c == 'z' ) {
 			id -= (id>9) * 10;
 		}
 		else if ( c == 'c' ) {
-			id += (id<MAXPICNUM-10) * 10;
+			id += (id<frames.size()-10) * 10;
 		}
 		else if ( c == 's' ) {
 			armor->saveData();
+			energy->saveData();
 		}
 		else if ( c == 'j' ) {
 			auto_play = true;
@@ -83,11 +119,12 @@ int main(int argc, char **argv)
 			gap *= 2;
 		}
 		else if ( auto_play ) {
-			id += (id<MAXPICNUM);
+			id += (id<frames.size()-1);
 		}
 	}
+
 	delete armor;
-	waitKey(1);
+	delete energy;
 	return 0;
 }
 

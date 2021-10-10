@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <opencv2/opencv.hpp>
+#include "util.hpp"
 
 #define hsvPath  "../model/hsv.dat"
 #define MAIN_HSV_PATH	"../model/mainhsv.dat"
@@ -26,17 +27,7 @@ private:
 	bool lostRect;
 public:
 
-	struct Hsv
-	{
-		int iLowH;
-		int iHighH;
 
-		int iLowS;
-		int iHighS;
-
-		int iLowV;
-		int iHighV;
-	};
 	Hsv mainHsv;
 	Hsv blueHsv;
 	Hsv redHsv;
@@ -48,10 +39,8 @@ public:
 	void Pretreatment();
 	void getArmor();
 
-	void controlBar(Hsv &range);
-	void hsvRange(Mat &input, Mat &output, Hsv &range);
-
 	void showFrame();
+
 	~ArmorDetection();
 	
 	void saveData();
@@ -66,11 +55,6 @@ public:
 	
 
 private:
-	void loadHsv(Hsv &range, string path);
-	void saveHsv(Hsv &range, string path);
-	double Distance(Point2f, Point2f);
-	double max(double, double);
-	double min(double, double);
 };
 
 

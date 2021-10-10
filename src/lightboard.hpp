@@ -36,8 +36,4 @@ public:
     static bool if_clear();
 };
 
-float distance(RotatedRect &a, RotatedRect &b);
-float distance(Point2f &a, Point2f &b);
-float distance(const float &a, const float &b);
-
 #endif

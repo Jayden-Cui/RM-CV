@@ -1,23 +1,8 @@
 #include "lightboard.hpp"
+#include "util.hpp"
 
 bool LightBoard::clear_flag;
 LightBoard::result_code LightBoard::result;
-
-float distance(RotatedRect &a, RotatedRect &b)
-{
-    return sqrt(pow(a.center.x - b.center.x, 2) + \
-        pow(a.center.y - b.center.y, 2));
-}
-
-float distance(Point2f &a, Point2f &b)
-{
-    return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
-}
-
-float distance(const float &a, const float &b)
-{
-    return abs(a-b);
-}
 
 
 

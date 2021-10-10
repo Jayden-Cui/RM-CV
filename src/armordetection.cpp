@@ -23,27 +23,6 @@ void ArmorDetection::setInputImage(Mat input) {
 	LightBoard::result = LightBoard::EMPTY;
 }
 
-void ArmorDetection::controlBar(Hsv &range) {
-	//创建进度条
-	namedWindow("Control", CV_WINDOW_AUTOSIZE);
-
-	cvCreateTrackbar("LowH", "Control", &range.iLowH, 179);
-	cvCreateTrackbar("HighH", "Control", &range.iHighH, 179);
-
-	cvCreateTrackbar("LowS", "Control", &range.iLowS, 255);
-	cvCreateTrackbar("HighS", "Control", &range.iHighS, 255);
-
-	cvCreateTrackbar("LowV", "Control", &range.iLowV, 255);
-	cvCreateTrackbar("HighV", "Control", &range.iHighV, 255);
-
-}
-
-void ArmorDetection::hsvRange(Mat &input, Mat &output, Hsv &range) {
-	inRange(input, 
-		Scalar(range.iLowH, range.iLowS, range.iLowV),
-		Scalar(range.iHighH, range.iHighS, range.iHighV),
-		output);
-}
 
 //图像预处理
 void ArmorDetection::Pretreatment() {
@@ -203,63 +182,18 @@ void ArmorDetection::showFrame() {
 	}
 }
 
-double ArmorDetection::Distance(Point2f a, Point2f b) {
-	return sqrt((a.x - b.x) * (a.x - b.x) +
-		(a.y - b.y) * (a.y - b.y));
-}
-
-double ArmorDetection::max(double first, double second) {
-	return first > second ? first : second;
-}
-
-double ArmorDetection::min(double first, double second) {
-	return first < second ? first : second;
-}
-
 ArmorDetection::~ArmorDetection() {
 	saveData();
 }
 
-void ArmorDetection::saveHsv(Hsv &range, string path) {
-	ofstream out_file(path);
-	out_file << range.iLowH << " " << range.iHighH << " " \
-		<< range.iLowS << " " << range.iHighS << " " \
-		<< range.iLowV << " " << range.iHighV;
-	out_file.close();
-
-	cout << "loaded [" << path << "]" << endl; 
-}
-
-void ArmorDetection::loadHsv(Hsv &range, string path) {
-	ifstream in_file(path);
-	if ( in_file.is_open() == false ) {
-		cout << "Open " << path << " FAIL =============" << endl;
-		return;
-	}
-	in_file >> range.iLowH >> range.iHighH \
-		>> range.iLowS >> range.iHighS \
-		>> range.iLowV >> range.iHighV;
-	in_file.close();
-
-	cout << "saved [" << path << "]" << endl; 
-}
-
 void ArmorDetection::saveData() {
-	cout << "Saving" << endl;
-
 	saveHsv(mainHsv, MAIN_HSV_PATH);
 	saveHsv(blueHsv, BLUE_HSV_PATH);
 	saveHsv(redHsv, RED_HSV_PAHT);
-
-	cout << "Saved" << endl;
 }
 
 void ArmorDetection::LoadData() {
-	cout << "Loading ..." << endl;
-
 	loadHsv(mainHsv, MAIN_HSV_PATH);
 	loadHsv(blueHsv, BLUE_HSV_PATH);
 	loadHsv(redHsv, RED_HSV_PAHT);
-
-	cout << "Loaded" << endl;
 }
