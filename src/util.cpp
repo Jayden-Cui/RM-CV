@@ -96,3 +96,10 @@ float angle(const Point2f &begin, const Point2f &end)
 	Vec2f vec(end.x-begin.x, begin.y-end.y);
 	return angle(vec);
 }
+
+
+float angle_gap(const float a1, const float a2)
+{
+	float gap = abs(a1-a2);
+	return gap<180 ? gap : 360-gap;
+}

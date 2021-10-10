@@ -19,6 +19,7 @@ using namespace std;
 
 ArmorDetection* armor = new ArmorDetection();
 EnergyDetector* energy = new EnergyDetector();
+EnergyDetector* energy_future = new EnergyDetector();
 Point2f center;
 
 #define MAXPICNUM 1095
@@ -50,7 +51,7 @@ int main(int argc, char **argv)
 	}
 
 	bool auto_play = false;
-	int gap = 100;
+	int gap = 40;
 	int id;
 	int last_id = -1;
 
@@ -81,7 +82,16 @@ int main(int argc, char **argv)
 				energy->setInputImage(frame);
 				energy->preTreatment();
 				energy->calculate();
+
+				Mat future;
+				if ( id+5 < frames.size() )
+					frames[id+5]->copyTo(future);
+				energy_future->setInputImage(future);
+				energy_future->preTreatment();
+				energy_future->drawFuturePoint(*energy);
+
 				energy->showFrame();
+				energy->saveAngle();
 			}
 
 			cout << endl;
@@ -123,8 +133,8 @@ int main(int argc, char **argv)
 		}
 	}
 
-	delete armor;
-	delete energy;
+	armor->saveData();
+	energy->saveData();
 	return 0;
 }
 

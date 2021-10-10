@@ -183,7 +183,6 @@ void ArmorDetection::showFrame() {
 }
 
 ArmorDetection::~ArmorDetection() {
-	saveData();
 }
 
 void ArmorDetection::saveData() {

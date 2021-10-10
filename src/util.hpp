@@ -39,4 +39,6 @@ float distance(const float &a, const float &b);
 float angle(Vec2f vec);
 float angle(const Point2f &begin, const Point2f &end);
 
+float angle_gap(const float a1, const float a2);
+
 #endif

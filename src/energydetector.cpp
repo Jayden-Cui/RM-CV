@@ -5,14 +5,14 @@
 EnergyDetector::EnergyDetector(/* args */)
 {
     loadData();
+    last_angle = 0;
+
+    ofstream out;
+    out.open(ANGLE_PATH);
+    out.close();
 }
 
 EnergyDetector::~EnergyDetector()
-{
-    saveData();
-}
-
-void EnergyDetector::setControlBar()
 {
 }
 
@@ -29,6 +29,24 @@ void EnergyDetector::setInputImage(Mat img)
         target_rect = nullptr;
     }
     armors.clear();
+}
+
+
+void EnergyDetector::drawFuturePoint(EnergyDetector &detector)
+{
+    if (center_rect && target_rect)
+    {
+        if ( detector.center_rect ) {
+            line(detector.frame, \
+                detector.center_rect->center, \
+                target_rect->center - center_rect->center + detector.center_rect->center, \
+                Scalar(255, 255, 0), \
+                2);
+        }
+        else
+            line(detector.frame, center_rect->center, target_rect->center, Scalar(255,0,0), 2);
+    }
+
 }
 
 void EnergyDetector::preTreatment()
@@ -138,13 +156,14 @@ void EnergyDetector::calculate()
         last_status = TARGET_NOT_FOUND;
         return;
     }
-
     last_status = FOUND;
+
 
 
     Point2f center_point = center_rect->center;
     Point2f target_point = target_rect->center;
     float target_angle = angle(center_point, target_point);
+    float similar_angle = target_angle;
 
 
     line(frame, center_point, target_point, Scalar(0,25,255), 3);
@@ -152,13 +171,20 @@ void EnergyDetector::calculate()
 
     vector<float> distances;
     distances.push_back(distance(center_point, target_point));
-    
+    RotatedRect special_armor = *target_rect;
     for (auto armor : armors) {
+        float armor_angle = angle(center_point,armor.center);
         line(frame, center_point, armor.center, Scalar(255,255,0), 1);
         distances.push_back(distance(center_point, armor.center));
-        putText(frame, to_string(angle(center_point,armor.center)), armor.center, FONT_HERSHEY_COMPLEX, 1, Scalar(255,100,55), 2);
-
+        putText(frame, to_string(armor_angle), armor.center, FONT_HERSHEY_COMPLEX, 1, Scalar(255,100,55), 2);
+        if ( angle_gap(similar_angle,last_angle) > angle_gap(armor_angle,last_angle) ) {
+            similar_angle = armor_angle;
+            special_armor = armor;
+        }
     }
+    last_angle = similar_angle;
+    drawRotatedRect(frame, special_armor, Scalar(0,255,0), 4);
+
     for (auto d : distances)
         cout << d << " ";
 
@@ -180,6 +206,13 @@ bool EnergyDetector::isArmor(RotatedRect &rect)
     return true;
 }
 
+
+void EnergyDetector::saveAngle()
+{
+    ofstream out;
+    out.open(ANGLE_PATH, ios::app);
+    out << last_angle << endl;
+}
 
 
 void EnergyDetector::saveData()
