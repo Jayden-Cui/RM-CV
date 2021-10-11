@@ -13,17 +13,20 @@ class EnergyDetector
 {
 private:
     string ENERGY_PATH = "../model/energyhsv.dat";
+    string HIGH_LIGHT_PATH = "../model/highlighthsv.dat";
     string ANGLE_PATH = "../model/angle.dat";
 
+    bool high_light_mode;
     Mat frame;
 
     vector<RotatedRect> armors;
-    RotatedRect *center_rect;
-    RotatedRect *target_rect;
+    RotatedRect *center_rect = nullptr;
+    RotatedRect *target_rect = nullptr;
+    vector<float> angles;
+    float last_angle;
+    float radius;
 
     bool isArmor(RotatedRect &rect);
-
-    float last_angle;
 public:
     enum status {
         FOUND,
@@ -33,8 +36,9 @@ public:
     status last_status;
 
     Hsv energyHsv;
+    Hsv highLightHsv;
 
-    EnergyDetector(/* args */);
+    EnergyDetector(bool hlm=false);
     ~EnergyDetector();
 
     void setInputImage(Mat img);
@@ -43,6 +47,7 @@ public:
     void preTreatment();
     void calculate();
     void showFrame();
+    void predict();
 
     void saveAngle();
     void saveData();

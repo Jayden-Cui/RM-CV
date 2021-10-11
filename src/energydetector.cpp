@@ -1,10 +1,12 @@
 #include "energydetector.hpp"
 
 
-
-EnergyDetector::EnergyDetector(/* args */)
+EnergyDetector::EnergyDetector(bool hlm)
 {
+    high_light_mode = hlm;
+   
     loadData();
+
     last_angle = 0;
 
     ofstream out;
@@ -60,7 +62,10 @@ void EnergyDetector::preTreatment()
     cvtColor(frame, hsv, COLOR_RGB2HSV);
 
     Mat mask;
-    hsvRange(hsv, mask, energyHsv);
+    if ( high_light_mode )
+        hsvRange(hsv, mask, highLightHsv);
+    else
+        hsvRange(hsv, mask, energyHsv);
 
     Mat kernel1 = getStructuringElement(MORPH_RECT, Size(7, 7));    
     morphologyEx(mask, mask, MORPH_CLOSE, kernel1);
@@ -68,10 +73,13 @@ void EnergyDetector::preTreatment()
     morphologyEx(mask, mask, MORPH_OPEN, kernel2);
     // imshow("mask", mask);
 
-
+    imshow("mask", mask);
 	vector<vector<Point>> contours;
 	vector<Vec4i> hierachy;
     findContours(mask, contours, hierachy, CV_RETR_TREE, CHAIN_APPROX_SIMPLE);
+    if ( contours.empty() ) {
+        return;
+    }
 
     int armor_cnt = 0;
     for (int i=0; i>=0; i=hierachy[i][0]) {
@@ -84,6 +92,7 @@ void EnergyDetector::preTreatment()
             / min(rect.size.height, rect.size.width);
         if ( area < 300 && ratio > 1.5 )    continue;
 
+        // 检查内部轮廓数
         int cnt = 0, son_id = hierachy[i][2];
         while ( son_id != -1 ) {
             son_id = hierachy[son_id][0];
@@ -159,24 +168,22 @@ void EnergyDetector::calculate()
     last_status = FOUND;
 
 
-
     Point2f center_point = center_rect->center;
     Point2f target_point = target_rect->center;
     float target_angle = angle(center_point, target_point);
     float similar_angle = target_angle;
 
+    radius = distance(center_point, target_point);
 
     line(frame, center_point, target_point, Scalar(0,25,255), 3);
-    putText(frame, to_string(target_angle), target_point, FONT_HERSHEY_COMPLEX, 1, Scalar(0,190,255), 2);
 
-    vector<float> distances;
-    distances.push_back(distance(center_point, target_point));
+    vector<float> distances{radius};
     RotatedRect special_armor = *target_rect;
     for (auto armor : armors) {
         float armor_angle = angle(center_point,armor.center);
         line(frame, center_point, armor.center, Scalar(255,255,0), 1);
         distances.push_back(distance(center_point, armor.center));
-        putText(frame, to_string(armor_angle), armor.center, FONT_HERSHEY_COMPLEX, 1, Scalar(255,100,55), 2);
+        // putText(frame, to_string(armor_angle), armor.center, FONT_HERSHEY_COMPLEX, 1, Scalar(255,100,55), 2);
         if ( angle_gap(similar_angle,last_angle) > angle_gap(armor_angle,last_angle) ) {
             similar_angle = armor_angle;
             special_armor = armor;
@@ -185,8 +192,61 @@ void EnergyDetector::calculate()
     last_angle = similar_angle;
     drawRotatedRect(frame, special_armor, Scalar(0,255,0), 4);
 
-    for (auto d : distances)
-        cout << d << " ";
+    // for (auto d : distances)
+    //     cout << d << " ";
+
+    circle(frame, center_point, static_cast<int>(distance(center_point, target_point)+target_rect->size.width/2), Scalar(255,55,0), 1);
+
+    if ( angles.empty() ) {
+        angles.push_back(target_angle);
+    }
+    else {
+        if ( angles.size() > 8 ) {
+            angles.erase(angles.begin());
+        }
+        if ( angle_gap(angles.back(), target_angle) > 30 ) {
+            angles.clear();
+        }
+        angles.push_back(target_angle);
+    }
+
+}
+
+void EnergyDetector::predict()
+{
+    if ( angles.size() > 3 ) {
+        vector<float> omegas;
+        // vector<float> a;
+        float a, omega = 0;
+        float pred_angle;
+        // float da = 0;
+        for (int i=1; i<angles.size(); i++) {
+            omegas.push_back(angle_gap(angles[i], angles[i-1]));
+        }
+        // for (auto o: omegas)    cout << o << " " ;
+
+        a = omegas[omegas.size()-2] - omegas[omegas.size()-1];
+        for (auto o : omegas)   omega += o;
+        omega /= omegas.size();
+        pred_angle = angles.back();
+        cout << omega << " ";
+        for (int i=0; i<5; i++) {
+            // omega += a;
+            pred_angle += omega;
+        }
+        // cout << cos(CV_PI/3) << endl;
+        if ( pred_angle > 360 ) pred_angle -= 360;
+        cout << pred_angle << " ";
+
+        Point2f pred_point( \
+            center_rect->center.x + radius * cos(pred_angle/180*CV_PI), \
+            center_rect->center.y - radius * sin(pred_angle/180*CV_PI));
+        circle(frame, pred_point, 5, Scalar(0,255,0), FILLED);
+
+        // for (int i=1; i<omegas.size(); i++) {
+        //     a.push_back(angle_gap(omegas[i], omegas[i-1]));
+        // } 
+    }
 
 }
 
@@ -218,10 +278,12 @@ void EnergyDetector::saveAngle()
 void EnergyDetector::saveData()
 {
     saveHsv(energyHsv, ENERGY_PATH);
+    saveHsv(highLightHsv, HIGH_LIGHT_PATH);
 }
 
 void EnergyDetector::loadData()
 {
     loadHsv(energyHsv, ENERGY_PATH);
+    loadHsv(highLightHsv, HIGH_LIGHT_PATH);
 }
 

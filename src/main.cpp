@@ -12,14 +12,14 @@ enum DETECTION_MODE{
 };
 
 #define MODE ENERGY
-
+#define HIGH_LIGHT false
 
 using namespace cv;
 using namespace std;
 
 ArmorDetection* armor = new ArmorDetection();
-EnergyDetector* energy = new EnergyDetector();
-EnergyDetector* energy_future = new EnergyDetector();
+EnergyDetector* energy = new EnergyDetector(HIGH_LIGHT);
+EnergyDetector* energy_future = new EnergyDetector(HIGH_LIGHT);
 Point2f center;
 
 #define MAXPICNUM 1095
@@ -31,8 +31,12 @@ void parse(int argc, char **argv)
 			controlBar(armor->mainHsv);
 		else if ( string(argv[i]) == "control:blue" )
 			controlBar(armor->blueHsv);
-		else if ( string(argv[i]) == "control:energy" )
-			controlBar(energy->energyHsv);
+		else if ( string(argv[i]) == "control:energy" ) {
+			if ( HIGH_LIGHT )
+				controlBar(energy->highLightHsv);
+			else
+				controlBar(energy->energyHsv);
+		}
 	}
 }
 
@@ -43,18 +47,27 @@ int main(int argc, char **argv)
 	Mat frame;
 	vector<Mat*> frames;
 	Mat *PtrMat;
-	VideoCapture cap("../sources/video/video.mp4");
+	
+
+	string video_path;
+	if ( HIGH_LIGHT )
+		video_path = "../sources/video/video2.mp4";
+	else
+		video_path = "../sources/video/video.mp4";
+	VideoCapture cap(video_path);
+
+	cout << "============= Loading Video =============" << endl;
 	while ( cap.read(frame) ) {
 		PtrMat = new Mat;
 		frame.copyTo(*PtrMat);
 		frames.push_back(PtrMat);
 	}
+	cout << "Loaded: " << frames.size() << " frames in total" << endl;
 
 	bool auto_play = false;
-	int gap = 40;
+	int gap = 100;
 	int id;
 	int last_id = -1;
-
 
 	for (id=0; ; )
 	{
@@ -72,6 +85,7 @@ int main(int argc, char **argv)
 			imshow("orginframe", frame);
 			putText(frame, to_string(id), Point(0, 30), HersheyFonts::FONT_HERSHEY_COMPLEX, 1, Scalar(0xff,0xff,0xff), 2);
 			
+		}
 			if ( MODE == ARMOR ) {
 				armor->setInputImage(frame);
 				armor->Pretreatment();
@@ -82,20 +96,20 @@ int main(int argc, char **argv)
 				energy->setInputImage(frame);
 				energy->preTreatment();
 				energy->calculate();
+				energy->predict();
 
-				Mat future;
-				if ( id+5 < frames.size() )
-					frames[id+5]->copyTo(future);
-				energy_future->setInputImage(future);
-				energy_future->preTreatment();
-				energy_future->drawFuturePoint(*energy);
+				// Mat future;
+				// if ( id+5 < frames.size() )
+				// 	frames[id+5]->copyTo(future);
+				// energy_future->setInputImage(future);
+				// energy_future->preTreatment();
+				// energy_future->drawFuturePoint(*energy);
 
 				energy->showFrame();
-				energy->saveAngle();
+				// energy->saveAngle();
 			}
 
 			cout << endl;
-		}
 		last_id = id;
 		char c = waitKey(gap);
 		if (c == 27 || c == 'q' ) //"Esc"

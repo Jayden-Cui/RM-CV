@@ -7,6 +7,7 @@ lines = data.split('\n')
 
 datas = []
 for line in lines:
+    if line == '':  continue
     n = float(line)
     datas.append(n)
 
