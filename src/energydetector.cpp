@@ -7,7 +7,7 @@ EnergyDetector::EnergyDetector(bool hlm)
    
     loadData();
 
-    last_angle = 0;
+    // last_angle = 0;
     lost_frames = 0;
     last_status = DONE;
 
@@ -20,7 +20,7 @@ EnergyDetector::~EnergyDetector()
 {
 }
 
-void EnergyDetector::setInputImage(Mat img)
+void EnergyDetector::setInputImage(Mat &img)
 {
     img.copyTo(frame);
 
@@ -40,7 +40,7 @@ void EnergyDetector::setInputImage(Mat img)
     else {
         lost_frames ++;
     }
-    if ( lost_frames > 4 ) {
+    if ( lost_frames > 7 ) {
         lost_frames = 0;
         cout << "lost ";
         angles.clear();
@@ -56,7 +56,7 @@ void EnergyDetector::drawFuturePoint(EnergyDetector &detector)
             line(detector.frame, \
                 detector.center_rect->center, \
                 target_rect->center - center_rect->center + detector.center_rect->center, \
-                Scalar(255, 255, 0), \
+                Scalar(155, 155, 155), \
                 2);
         }
         else
@@ -82,7 +82,7 @@ void EnergyDetector::preTreatment()
         hsvRange(hsv, mask, highLightHsv);
     else
         hsvRange(hsv, mask, energyHsv);
-
+    /* morphology operation : close -> open -> close*/
     Mat kernel1 = getStructuringElement(MORPH_RECT, Size(5, 5));    
     Mat kernel2 = getStructuringElement(MORPH_RECT, Size(3, 3));
     morphologyEx(mask, mask, MORPH_CLOSE, kernel1);
@@ -97,7 +97,7 @@ void EnergyDetector::preTreatment()
 	vector<Vec4i> hierachy;
     findContours(mask, contours, hierachy, CV_RETR_TREE, CHAIN_APPROX_SIMPLE);
     IF_THEN_RETURN(contours.empty(), CONTOUR_NOT_FOUND);
-    // ssa
+    /* match the armors and the center */ 
     int armor_cnt = 0;
     for (int i=0; i>=0; i=hierachy[i][0]) {
         float area = contourArea(contours[i]);
@@ -175,14 +175,12 @@ void EnergyDetector::calculate()
 
     last_status = FOUND;
 
-    Point2f center_point = center_rect->center;
-    Point2f target_point = target_rect->center;
+    Point2f &center_point = center_rect->center;
+    Point2f &target_point = target_rect->center;
     Angle target_angle = angle(center_point, target_point);
-    Angle similar_angle = target_angle;
+    // Angle similar_angle = target_angle;
 
     radius = distance(center_point, target_point);
-
-    // line(frame, center_point, target_point, Scalar(0,25,255), 3);
 
     vector<float> distances{radius};
     RotatedRect special_armor = *target_rect;
@@ -191,12 +189,12 @@ void EnergyDetector::calculate()
         line(frame, center_point, armor.center, Scalar(255,255,0), 1);
         distances.push_back(distance(center_point, armor.center));
         // putText(frame, to_string(armor_angle), armor.center, FONT_HERSHEY_COMPLEX, 1, Scalar(255,100,55), 2);
-        if ( abs(similar_angle-last_angle) > abs(armor_angle-last_angle) ) {
-            similar_angle = armor_angle;
-            special_armor = armor;
-        }
+        // if ( abs(similar_angle-last_angle) > abs(armor_angle-last_angle) ) {
+        //     similar_angle = armor_angle;
+        //     special_armor = armor;
+        // }
     }
-    last_angle = similar_angle;
+    // last_angle = similar_angle;
     drawRotatedRect(frame, special_armor, Scalar(0,255,0), 4);
 
     // circle(frame, center_point, static_cast<int>(distance(center_point, target_point)+target_rect->size.width/2), Scalar(255,55,0), 1);
@@ -219,6 +217,7 @@ void EnergyDetector::calculate()
 
 void EnergyDetector::predict()
 {
+    IF_THEN_RETURN(center_rect==nullptr, CENTER_NOT_FOUND);
     if ( angles.size() > 4 ) {
         vector<float> omegas;
         // vector<float> a;
@@ -325,7 +324,7 @@ void EnergyDetector::saveAngle()
 {
     ofstream out;
     out.open(ANGLE_PATH, ios::app);
-    out << last_angle.degree << endl;
+    // out << last_angle.degree << endl;
 }
 
 

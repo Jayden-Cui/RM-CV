@@ -29,7 +29,7 @@ private:
     RotatedRect *center_rect = nullptr;
     RotatedRect *target_rect = nullptr;
     vector<Angle> angles;
-    Angle last_angle;
+    // Angle last_angle;
     float radius;
     int  lost_frames;
 
@@ -54,7 +54,7 @@ public:
     EnergyDetector(bool hlm=false);
     ~EnergyDetector();
 
-    void setInputImage(Mat img);
+    void setInputImage(Mat &img);
     void drawFuturePoint(EnergyDetector &detector);
 
     void preTreatment();
