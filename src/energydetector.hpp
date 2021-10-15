@@ -9,6 +9,12 @@
 using namespace std;
 using namespace cv;
 
+#define IF_THEN_RETURN(condiction, status) \
+    if ( condiction ) { \
+        last_status = status; \
+        return; \
+    }
+
 class EnergyDetector
 {
 private:
@@ -22,14 +28,21 @@ private:
     vector<RotatedRect> armors;
     RotatedRect *center_rect = nullptr;
     RotatedRect *target_rect = nullptr;
-    vector<float> angles;
-    float last_angle;
+    vector<Angle> angles;
+    Angle last_angle;
     float radius;
+    int  lost_frames;
 
     bool isArmor(RotatedRect &rect);
+    bool likeArmor(const float father_area, vector<Point> &son);
+    bool likeCenter(vector<Point> cent);
+
 public:
     enum status {
+        DONE,
         FOUND,
+        IMAGE_EMPTY,
+        CONTOUR_NOT_FOUND,
         CENTER_NOT_FOUND,
         TARGET_NOT_FOUND
     };
@@ -48,6 +61,8 @@ public:
     void calculate();
     void showFrame();
     void predict();
+    void printResult();
+
 
     void saveAngle();
     void saveData();

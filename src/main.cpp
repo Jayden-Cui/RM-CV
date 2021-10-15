@@ -12,7 +12,7 @@ enum DETECTION_MODE{
 };
 
 #define MODE ENERGY
-#define HIGH_LIGHT false
+#define HIGH_LIGHT true
 
 using namespace cv;
 using namespace std;
@@ -37,11 +37,15 @@ void parse(int argc, char **argv)
 			else
 				controlBar(energy->energyHsv);
 		}
+		else
+			cout << "arg [" << string(argv[i]) << "] not found" << endl;  
 	}
 }
 
 int main(int argc, char **argv)
 {
+	cout.flags(ios::fixed);
+	cout.precision(2);
 	parse(argc, argv);
 
 	Mat frame;
@@ -51,7 +55,7 @@ int main(int argc, char **argv)
 
 	string video_path;
 	if ( HIGH_LIGHT )
-		video_path = "../sources/video/video2.mp4";
+		video_path = "../sources/video/highlight.mp4";
 	else
 		video_path = "../sources/video/video.mp4";
 	VideoCapture cap(video_path);
@@ -65,15 +69,15 @@ int main(int argc, char **argv)
 	cout << "Loaded: " << frames.size() << " frames in total" << endl;
 
 	bool auto_play = false;
-	int gap = 100;
+	int gap = 40;
 	int id;
 	int last_id = -1;
 
 	for (id=0; ; )
 	{
-		cout << "\r[" << id << "/" << frames.size() << "]" << " ";
 		if ( last_id != id ) 
 		{
+			cout << "\r[" << id << "/" << frames.size() << "]" << " ";
 			frames[id]->copyTo(frame);
 			// frame = frames[id];
 			// std::string img_path = "../sources/imageDataset/" + to_string(id) + ".jpg";
@@ -82,10 +86,9 @@ int main(int argc, char **argv)
 			// 	id += (id > last_id ? 1 : -1);
 			// 	continue;
 			// }
-			imshow("orginframe", frame);
+			// imshow("orginframe", frame);
 			putText(frame, to_string(id), Point(0, 30), HersheyFonts::FONT_HERSHEY_COMPLEX, 1, Scalar(0xff,0xff,0xff), 2);
 			
-		}
 			if ( MODE == ARMOR ) {
 				armor->setInputImage(frame);
 				armor->Pretreatment();
@@ -93,23 +96,30 @@ int main(int argc, char **argv)
 				armor->showFrame();
 			}
 			else if ( MODE == ENERGY ) {
-				energy->setInputImage(frame);
-				energy->preTreatment();
-				energy->calculate();
-				energy->predict();
+				try {
+					energy->setInputImage(frame);
+					energy->preTreatment();
+					energy->calculate();
+					energy->predict();
+				}
+				catch(Exception &e) {
+					cout << e.what() << endl;
+				}
 
-				// Mat future;
-				// if ( id+5 < frames.size() )
-				// 	frames[id+5]->copyTo(future);
-				// energy_future->setInputImage(future);
-				// energy_future->preTreatment();
-				// energy_future->drawFuturePoint(*energy);
+				Mat future;
+				if ( id+5 < frames.size() )
+					frames[id+5]->copyTo(future);
+				energy_future->setInputImage(future);
+				energy_future->preTreatment();
+				energy_future->drawFuturePoint(*energy);
 
 				energy->showFrame();
+				energy->printResult();
 				// energy->saveAngle();
 			}
-
 			cout << endl;
+		}
+
 		last_id = id;
 		char c = waitKey(gap);
 		if (c == 27 || c == 'q' ) //"Esc"

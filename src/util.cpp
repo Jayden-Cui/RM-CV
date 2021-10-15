@@ -78,12 +78,12 @@ float distance(const float &a, const float &b)
     return abs(a-b);
 }
 
-float angle(Vec2f vec)
+float angle(const Vec2f &vec)
 {
 	// 90 | 270
 	if ( vec[0] == 0 )
 		return vec[1] > 0 ? 90 : 270;
-	float res = atan(vec[1]/vec[0]) * 190 / CV_PI;
+	float res = atan(vec[1]/vec[0]) * 180 / CV_PI;
 	if ( vec[0] < 0 )
 		res += 180;
 	else if ( vec[1] < 0 )
