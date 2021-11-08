@@ -6,6 +6,8 @@
 #include "util.hpp"
 
 
+#define PRED_FRAME 5
+
 using namespace std;
 using namespace cv;
 
@@ -23,13 +25,14 @@ private:
     string ANGLE_PATH = "../model/angle.dat";
 
     bool high_light_mode;
+    bool silence;
     Mat frame;
 
     vector<RotatedRect> armors;
     RotatedRect *center_rect = nullptr;
     RotatedRect *target_rect = nullptr;
     vector<Angle> angles;
-    // Angle last_angle;
+    Point2f last_center;
     float radius;
     int  lost_frames;
 
@@ -51,7 +54,7 @@ public:
     Hsv energyHsv;
     Hsv highLightHsv;
 
-    EnergyDetector(bool hlm=false);
+    EnergyDetector(bool hlm=false, bool slc=false);
     ~EnergyDetector();
 
     void setInputImage(Mat &img);

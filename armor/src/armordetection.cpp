@@ -1,4 +1,4 @@
-#include "armordetection.h"
+#include "armordetection.hpp"
 #include "lightboard.hpp"
 
 ArmorDetection::ArmorDetection() {

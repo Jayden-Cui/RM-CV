@@ -3,7 +3,7 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
-#include "armordetection.h"
+#include "armordetection.hpp"
 #include "energydetector.hpp"
 
 enum DETECTION_MODE{
@@ -19,10 +19,11 @@ using namespace std;
 
 ArmorDetection* armor = new ArmorDetection();
 EnergyDetector* energy = new EnergyDetector(HIGH_LIGHT);
-EnergyDetector* energy_future = new EnergyDetector(HIGH_LIGHT);
+EnergyDetector* energy_future = new EnergyDetector(HIGH_LIGHT, true);
 Point2f center;
 
 #define MAXPICNUM 1095
+
 
 void parse(int argc, char **argv)
 {
@@ -69,6 +70,7 @@ int main(int argc, char **argv)
 	cout << "Loaded: " << frames.size() << " frames in total" << endl;
 
 	bool auto_play = false;
+	bool show_pred = false;
 	int gap = 40;
 	int id;
 	int last_id = -1;
@@ -87,7 +89,7 @@ int main(int argc, char **argv)
 			// 	continue;
 			// }
 			// imshow("orginframe", frame);
-			putText(frame, to_string(id), Point(0, 30), HersheyFonts::FONT_HERSHEY_COMPLEX, 1, Scalar(0xff,0xff,0xff), 2);
+			putText(frame, to_string(id), Point(0, 30), HersheyFonts::FONT_HERSHEY_COMPLEX, 1, Scalar(0xff,0xff,0xf), 2);
 			
 			if ( MODE == ARMOR ) {
 				armor->setInputImage(frame);
@@ -96,22 +98,19 @@ int main(int argc, char **argv)
 				armor->showFrame();
 			}
 			else if ( MODE == ENERGY ) {
-				try {
-					energy->setInputImage(frame);
-					energy->preTreatment();
-					energy->calculate();
-					energy->predict();
-				}
-				catch(Exception &e) {
-					cout << e.what() << endl;
-				}
+				energy->setInputImage(frame);
+				energy->preTreatment();
+				energy->calculate();
+				energy->predict();
 
-				Mat future;
-				if ( id+5 < frames.size() )
-					frames[id+5]->copyTo(future);
-				energy_future->setInputImage(future);
-				energy_future->preTreatment();
-				energy_future->drawFuturePoint(*energy);
+				if ( show_pred ) {
+					Mat future;
+					if ( id+PRED_FRAME < frames.size() && id+PRED_FRAME>=0 )
+						frames[id+PRED_FRAME]->copyTo(future);
+					energy_future->setInputImage(future);
+					energy_future->preTreatment();
+					energy_future->drawFuturePoint(*energy);
+				}
 
 				energy->showFrame();
 				energy->printResult();
@@ -151,6 +150,9 @@ int main(int argc, char **argv)
 		}
 		else if ( c == 'i' ) {
 			gap *= 2;
+		}
+		else if ( c == 'b' ) {
+			show_pred = !show_pred;
 		}
 		else if ( auto_play ) {
 			id += (id<frames.size()-1);
