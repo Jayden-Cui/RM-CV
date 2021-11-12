@@ -4,9 +4,6 @@
 
 #include <opencv2/opencv.hpp>
 
-using namespace std;
-using namespace cv;
-
 
 
 struct Hsv
@@ -57,23 +54,26 @@ struct Angle
 
 void controlBar(Hsv &range);
 
-void hsvRange(Mat &input, Mat &output, Hsv &range);
+void hsvRange(cv::Mat &input, cv::Mat &output, Hsv &range);
 
-void saveHsv(Hsv &range, string path);
-void loadHsv(Hsv &range, string path);
-
-
-void drawRotatedRect(Mat &img, RotatedRect &rect, Scalar color=Scalar(255,0,255), int thickness=1);
+void saveHsv(Hsv &range, std::string path);
+void loadHsv(Hsv &range, std::string path);
 
 
-float distance(RotatedRect &a, RotatedRect &b);
-float distance(Point2f &a, Point2f &b);
+void drawRotatedRect(cv::Mat &img, cv::RotatedRect &rect, cv::Scalar color=cv::Scalar(255,0,255), int thickness=1);
+
+
+float distance(cv::RotatedRect &a, cv::RotatedRect &b);
+float distance(cv::Point2f &a, cv::Point2f &b);
 float distance(const float &a, const float &b);
 
 
-float angle(const Vec2f &vec);
-float angle(const Point2f &begin, const Point2f &end);
+float angle(const cv::Vec2f &vec);
+float angle(const cv::Point2f &begin, const cv::Point2f &end);
 
 float angle_gap(const float a1, const float a2);
+
+double large_div_small(const double &a, const double &b);
+
 
 #endif

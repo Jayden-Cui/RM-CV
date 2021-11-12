@@ -279,6 +279,13 @@ void EnergyDetector::printResult()
     }
 }
 
+void EnergyDetector::run()
+{
+    preTreatment();
+    calculate();
+    predict();
+}
+
 bool EnergyDetector::isArmor(RotatedRect &rect)
 {
     if ( rect.size.area() < 550 )   return false;

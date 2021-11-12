@@ -63,7 +63,9 @@ void LightBoard::drawArmor(Mat &frame) {
     ellipse(frame, left, Scalar(0,255,255), FILLED);
     ellipse(frame, right, Scalar(0,255,255), FILLED);
 
-    rectangle(frame, left.boundingRect2f().tl(), right.boundingRect2f().br(), \
+    rectangle(frame, \
+        Point(left.center.x-left.size.width/2, left.center.y-left.size.height/2), \
+        Point(right.center.x+right.size.width/2, right.center.y+right.size.height/2), \
         Scalar(0,0,255), 3);
 
 

@@ -66,6 +66,7 @@ public:
     void predict();
     void printResult();
 
+    void run();
 
     void saveAngle();
     void saveData();

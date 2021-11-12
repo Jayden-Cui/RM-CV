@@ -1,6 +1,11 @@
 #include "util.hpp"
 #include <iostream>
 
+
+using namespace std;
+using namespace cv;
+
+
 void controlBar(Hsv &range) {
 	//创建进度条
 	namedWindow("Control", CV_WINDOW_AUTOSIZE);
@@ -102,4 +107,9 @@ float angle_gap(const float a1, const float a2)
 {
 	float gap = abs(a1-a2);
 	return gap<180 ? gap : 360-gap;
+}
+
+double large_div_small(const double &a, const double &b)
+{
+    return max(a,b) / min(a,b);
 }

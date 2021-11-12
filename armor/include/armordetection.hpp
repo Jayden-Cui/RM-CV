@@ -41,6 +41,8 @@ public:
 
 	void showFrame();
 
+	void run();
+
 	~ArmorDetection();
 	
 	void saveData();

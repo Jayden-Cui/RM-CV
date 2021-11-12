@@ -163,6 +163,7 @@ void ArmorDetection::getArmor() {
 	if ( fitness != nullptr ) {
 		fitness->drawArmor(frame);
 		center = fitness->center();
+		delete fitness;
 	}
 
 	if ( LightBoard::if_clear() ) {
@@ -180,6 +181,12 @@ void ArmorDetection::showFrame() {
 	else if ( LightBoard::NEW_TARGET == LightBoard::result ) {
 		cout << "perhaps new target" << endl;
 	}
+}
+
+void ArmorDetection::run() {
+	Pretreatment();
+	getArmor();
+	showFrame();
 }
 
 ArmorDetection::~ArmorDetection() {
